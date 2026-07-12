@@ -731,7 +731,9 @@ class ViewportActionsBar(QFrame):
         self._btn_import_template.clicked.connect(self._on_import_template_clicked)
         import_clear_row.addWidget(self._btn_import_template)
         self._btn_clear_template = QPushButton("Clear")
-        self._btn_clear_template.setToolTip("Clear saved center template")
+        self._btn_clear_template.setToolTip(
+            "Clear the saved center template, or cancel an in-progress calibration"
+        )
         self._btn_clear_template.clicked.connect(self._on_clear_template_clicked)
         import_clear_row.addWidget(self._btn_clear_template)
         panel_layout.addLayout(import_clear_row)
@@ -1259,9 +1261,14 @@ class ViewportActionsBar(QFrame):
         self._btn_calibrate_center.setEnabled(self._has_image)
         self._btn_accept_center.setEnabled(self._has_image and self._center_calibrating)
         self._btn_import_template.setEnabled(self._has_image)
+        # Also enabled mid-calibration so an unwanted calibrate can be
+        # cancelled — clearing exits calibration and hides the crop overlay.
         self._btn_clear_template.setEnabled(
-            self._center_template_model is not None
-            and self._center_template_model.has_template()
+            self._center_calibrating
+            or (
+                self._center_template_model is not None
+                and self._center_template_model.has_template()
+            )
         )
         self._btn_measure.setEnabled(scale_available and self._has_image)
         self._grid_chk.setEnabled(scale_available)
