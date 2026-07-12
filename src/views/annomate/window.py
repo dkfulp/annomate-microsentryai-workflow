@@ -409,6 +409,7 @@ class AnnoMateWindow(QWidget):
     open_image_folder_requested = Signal()
     open_recent_project_requested = Signal(str)
     open_recent_image_folder_requested = Signal(str)
+    save_project_requested = Signal()
 
     def __init__(
         self,
@@ -916,12 +917,28 @@ class AnnoMateWindow(QWidget):
             return
         if self._project_controller is None or not self._project_controller.project_dir:
             logger.info("Center template accept requested before project was saved.")
-            QMessageBox.information(
-                self,
-                "Center Template",
-                "Save the project before accepting center calibration.",
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Information)
+            box.setWindowTitle("Center Template")
+            box.setText(
+                "The center template is stored inside the project folder, so "
+                "the project must be saved before the calibration can be "
+                "accepted."
             )
-            return
+            save_btn = box.addButton("Save Now…", QMessageBox.AcceptRole)
+            box.addButton(QMessageBox.Cancel)
+            box.setDefaultButton(save_btn)
+            box.exec()
+            if box.clickedButton() is not save_btn:
+                return
+            # Direct signal connections run synchronously: the save dialog
+            # completes before the check below.
+            self.save_project_requested.emit()
+            if (
+                self._project_controller is None
+                or not self._project_controller.project_dir
+            ):
+                return  # user cancelled the save dialog; calibration stays pending
 
         settings = self.canvas.center_crop_settings()
         center_x = settings.get("center_x")

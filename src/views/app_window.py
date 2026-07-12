@@ -77,6 +77,7 @@ class AppWindow(QMainWindow):
 
         self.annomate_view.new_project_requested.connect(self._new_project)
         self.annomate_view.open_project_requested.connect(self._open_project)
+        self.annomate_view.save_project_requested.connect(self._save_project)
         self.annomate_view.open_image_folder_requested.connect(self._open_image_folder)
         self.annomate_view.open_recent_project_requested.connect(
             self._open_recent_project
