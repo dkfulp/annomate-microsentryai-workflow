@@ -125,8 +125,6 @@ class AppWindow(QMainWindow):
         add(file_menu, "Open Image Folder…", "", self._open_image_folder)
         add(file_menu, "Relocate Images…", "", self._relocate_images)
         file_menu.addSeparator()
-        add(file_menu, "Preferences…", "", self._open_preferences)
-        file_menu.addSeparator()
         add(file_menu, "Exit", "Ctrl+Q", self.close)
 
         data_menu = self.menuBar().addMenu("&Data")
@@ -384,9 +382,6 @@ class AppWindow(QMainWindow):
                 ),
             )
         return True
-
-    def _open_preferences(self) -> None:
-        QMessageBox.information(self, "Preferences", "Preferences coming soon.")
 
     # ================================================================== #
     # Data menu handlers
