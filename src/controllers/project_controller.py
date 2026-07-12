@@ -233,11 +233,8 @@ class ProjectController(QObject):
                 )
                 ds.image_dir = image_dir
                 ds.image_files = files
-            elif image_dir:
-                warnings.append(
-                    f"Image directory not found:\n{image_dir}\n\n"
-                    "Annotations are loaded but images will not display."
-                )
+            # A missing image_dir is not warned here: the view detects it
+            # from project_data and offers relocation directly.
 
             calib_state = (
                 self._calibration_model._state if self._calibration_model else None
