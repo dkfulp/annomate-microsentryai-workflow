@@ -357,6 +357,50 @@ class TestProjectRoundTrip:
         assert inf2.labels.get(abs_img) == "ANOMALY"
         assert inf2.inference_cache.get(abs_img) == pytest.approx(0.87)
 
+    def test_round_trip_nested_images_keep_distinct_scores_and_labels(
+        self, pio, tmp_path
+    ):
+        """Two images sharing a basename in different subfolders must not collide.
+
+        Before the fix, per_image/scores/labels were keyed by os.path.basename(),
+        which collapses "nest1/dup.jpg" and "nest3/dup.jpg" to the same "dup.jpg"
+        key and silently overwrites one image's score/label with the other's.
+        """
+        from PIL import Image as PILImage
+
+        img_dir = tmp_path / "images"
+        (img_dir / "nest1").mkdir(parents=True)
+        (img_dir / "nest3").mkdir(parents=True)
+        PILImage.new("RGB", (10, 10)).save(img_dir / "nest1" / "dup.jpg")
+        PILImage.new("RGB", (10, 10)).save(img_dir / "nest3" / "dup.jpg")
+
+        ds = DatasetState()
+        ds.image_dir = str(img_dir)
+        ds.image_files = ["nest1/dup.jpg", "nest3/dup.jpg"]
+
+        abs_nest1 = str(img_dir / "nest1" / "dup.jpg")
+        abs_nest3 = str(img_dir / "nest3" / "dup.jpg")
+        inf = InferenceState()
+        inf.scores = {abs_nest1: 0.1, abs_nest3: 0.9}
+        inf.labels = {abs_nest1: "NORMAL", abs_nest3: "ANOMALY"}
+
+        proj_dir = str(tmp_path / "proj")
+        path = pio.save_project(proj_dir, "myproject", ds, inf)
+
+        raw = json.loads(Path(path).read_text())
+        assert raw["per_image"]["nest1/dup.jpg"]["score"] == pytest.approx(0.1)
+        assert raw["per_image"]["nest3/dup.jpg"]["score"] == pytest.approx(0.9)
+        assert raw["per_image"]["nest1/dup.jpg"]["label"] == "NORMAL"
+        assert raw["per_image"]["nest3/dup.jpg"]["label"] == "ANOMALY"
+
+        data = pio.load_project(path)
+        inf2 = InferenceState()
+        pio.apply_project_to_states(data, DatasetState(), inf2)
+        assert inf2.scores.get(abs_nest1) == pytest.approx(0.1)
+        assert inf2.scores.get(abs_nest3) == pytest.approx(0.9)
+        assert inf2.labels.get(abs_nest1) == "NORMAL"
+        assert inf2.labels.get(abs_nest3) == "ANOMALY"
+
     def test_score_maps_saved_and_restored(self, pio, tmp_path):
         """Verify that score map arrays are written to a .npz file and restored correctly.
 

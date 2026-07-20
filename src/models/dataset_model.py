@@ -1,6 +1,5 @@
 import os
 import logging
-from pathlib import Path
 
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal
 from PySide6.QtGui import QColor, QBrush
@@ -112,7 +111,7 @@ class DatasetTableModel(QAbstractTableModel):
 
         if role == Qt.DisplayRole:
             if col == 0:
-                return Path(filename).stem
+                return os.path.splitext(filename)[0]
             elif col == 1:
                 return "Reviewed" if self.state.is_reviewed(filename) else "Pending"
 
@@ -608,13 +607,14 @@ class DatasetTableModel(QAbstractTableModel):
         return len(self.state.annotations.get(self.state.image_files[row], []))
 
     def get_image_filename(self, row: int) -> str:
-        """Return the raw filename (basename) for the image at *row*.
+        """Return the image's path relative to the dataset root for *row*.
 
         Args:
             row (int): Zero-based row index of the target image.
 
         Returns:
-            str: Filename string, or an empty string for out-of-bounds rows.
+            str: Dataset-relative path (POSIX-separated), or an empty string
+                for out-of-bounds rows.
         """
         if not (0 <= row < self.rowCount()):
             return ""

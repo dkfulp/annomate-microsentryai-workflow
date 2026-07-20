@@ -429,7 +429,7 @@ class AppWindow(QMainWindow):
             return
         try:
             msg = self.io_controller.export_binary_masks(
-                os.path.join(chosen, "binary_masks")
+                os.path.join(chosen, "ground_truth")
             )
             QMessageBox.information(self, "Export Binary Masks", msg)
         except Exception as exc:

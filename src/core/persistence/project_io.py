@@ -118,10 +118,12 @@ class ProjectIO:
         )
 
         scores_by_fname = {
-            os.path.basename(k): v for k, v in inference_state.scores.items()
+            self._as_relative_path(k, dataset_state.image_dir): v
+            for k, v in inference_state.scores.items()
         }
         labels_by_fname = {
-            os.path.basename(k): v for k, v in inference_state.labels.items()
+            self._as_relative_path(k, dataset_state.image_dir): v
+            for k, v in inference_state.labels.items()
         }
         per_image = {}
         all_fnames = (

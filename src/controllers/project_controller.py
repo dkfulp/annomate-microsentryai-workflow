@@ -20,10 +20,9 @@ from PySide6.QtCore import QObject, Signal
 
 from controllers.autosave import AutosaveManager
 from core.persistence.project_io import ProjectIO
+from core.utils.image_scan import scan_images
 
 logger = logging.getLogger("AnnoMate.ProjectController")
-
-_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 
 
 class ProjectController(QObject):
@@ -226,13 +225,8 @@ class ProjectController(QObject):
                 ds.image_files = []
                 self._inference_model.state.clear()
             elif image_dir and os.path.isdir(image_dir):
-                files = sorted(
-                    f
-                    for f in os.listdir(image_dir)
-                    if Path(f).suffix.lower() in _IMAGE_EXTENSIONS
-                )
                 ds.image_dir = image_dir
-                ds.image_files = files
+                ds.image_files = scan_images(image_dir)
             # A missing image_dir is not warned here: the view detects it
             # from project_data and offers relocation directly.
 
@@ -448,14 +442,9 @@ class ProjectController(QObject):
         Raises:
             OSError: If new_dir cannot be listed.
         """
-        files = sorted(
-            f
-            for f in os.listdir(new_dir)
-            if Path(f).suffix.lower() in _IMAGE_EXTENSIONS
-        )
         state = self._dataset_model.state
         state.image_dir = new_dir
-        state.image_files = files
+        state.image_files = scan_images(new_dir)
 
         self._loading = True
         try:
