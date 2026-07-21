@@ -1148,7 +1148,14 @@ class AnnoMateWindow(QWidget):
         if self._current_row >= 0:
             if decision == "accept":
                 self.dataset_model.set_image_classes(self._current_row, [])
-            self.dataset_model.set_review_decision(self._current_row, decision)
+            session_seconds = (
+                self._project_controller.get_session_seconds()
+                if self._project_controller is not None
+                else None
+            )
+            self.dataset_model.set_review_decision(
+                self._current_row, decision, session_seconds=session_seconds
+            )
 
     def _on_annotation_mode_changed(self, mode: str) -> None:
         self.dataset_model.set_annotation_mode(mode)

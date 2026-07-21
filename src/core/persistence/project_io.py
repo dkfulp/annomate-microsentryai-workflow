@@ -135,6 +135,7 @@ class ProjectIO:
             label = labels_by_fname.get(fname)
             decision = dataset_state.review_decisions.get(fname, "")
             decision_at = dataset_state.decision_timestamps.get(fname, "")
+            decision_session_seconds = dataset_state.decision_session_seconds.get(fname)
             inspector = dataset_state.inspectors.get(fname, "")
             note = dataset_state.notes.get(fname, "")
             if score is not None:
@@ -145,6 +146,8 @@ class ProjectIO:
                 entry["decision"] = decision
             if decision_at:
                 entry["decision_at"] = decision_at
+            if decision_session_seconds is not None:
+                entry["decision_session_seconds"] = decision_session_seconds
             if inspector:
                 entry["inspector"] = inspector
             if note:
@@ -481,6 +484,10 @@ class ProjectIO:
                     )
                 if info.get("decision_at"):
                     dataset_state.decision_timestamps[fname] = info["decision_at"]
+                if info.get("decision_session_seconds") is not None:
+                    dataset_state.decision_session_seconds[fname] = info[
+                        "decision_session_seconds"
+                    ]
                 dataset_state.inspectors[fname] = info.get("inspector", "")
                 dataset_state.notes[fname] = info.get("note", "")
                 img_classes = info.get("image_classes", [])

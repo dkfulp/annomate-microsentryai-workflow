@@ -824,6 +824,45 @@ class TestProjectRoundTrip:
         assert inf2.scores.get(abs_img) == pytest.approx(0.42)
         assert inf2.labels.get(abs_img) == "NORMAL"
 
+    def test_decision_session_seconds_round_trips(self, pio, tmp_path):
+        """Verify that decision_session_seconds survives a save/load round-trip.
+
+        Sets a review decision along with a session-seconds value, saves the
+        project, and loads it back. Success means the session-seconds value is
+        restored alongside the decision in the new DatasetState.
+        """
+        ds = _make_dataset(tmp_path)
+        ds.set_review_decision("img001.jpg", "accept", session_seconds=321.0)
+
+        proj_dir = str(tmp_path / "proj")
+        path = pio.save_project(proj_dir, "myproject", ds, InferenceState())
+
+        raw = json.loads(Path(path).read_text())
+        assert raw["per_image"]["img001.jpg"]["decision_session_seconds"] == 321.0
+
+        data = pio.load_project(path)
+        ds2 = DatasetState()
+        ds2.image_dir = ds.image_dir
+        ds2.image_files = list(ds.image_files)
+        pio.apply_project_to_states(data, ds2, InferenceState())
+
+        assert ds2.decision_session_seconds.get("img001.jpg") == 321.0
+
+    def test_decision_session_seconds_absent_when_not_set(self, pio, tmp_path):
+        """Verify that decision_session_seconds is omitted when no value was recorded.
+
+        A decision made without a session-seconds value (e.g. no project session
+        active) should not add the key to the per_image entry.
+        """
+        ds = _make_dataset(tmp_path)
+        ds.review_decisions["img001.jpg"] = "reject"
+
+        proj_dir = str(tmp_path / "proj")
+        path = pio.save_project(proj_dir, "myproject", ds, InferenceState())
+
+        raw = json.loads(Path(path).read_text())
+        assert "decision_session_seconds" not in raw["per_image"]["img001.jpg"]
+
     def test_legacy_format_loads_review_status_and_decisions(self, pio, tmp_path):
         """Verify that the legacy 'review_status' and 'review_decisions' top-level keys are still readable.
 

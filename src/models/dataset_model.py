@@ -503,16 +503,22 @@ class DatasetTableModel(QAbstractTableModel):
             return False
         return self.state.is_reviewed(self.state.image_files[row])
 
-    def set_review_decision(self, row: int, decision) -> None:
+    def set_review_decision(
+        self, row: int, decision, session_seconds: float = None
+    ) -> None:
         """Set the image-level review decision for the image at *row*.
 
         Args:
             row (int): Zero-based row index of the target image.
             decision (str | None): ``"accept"``, ``"reject"``, or ``None`` to clear.
+            session_seconds (float | None): Cumulative project session-seconds at
+                the moment of decision. See ``DatasetState.set_review_decision``.
         """
         if not (0 <= row < self.rowCount()):
             return
-        self.state.set_review_decision(self.state.image_files[row], decision)
+        self.state.set_review_decision(
+            self.state.image_files[row], decision, session_seconds=session_seconds
+        )
         self._emit_row(row)
 
     def get_review_decision(self, row: int):
