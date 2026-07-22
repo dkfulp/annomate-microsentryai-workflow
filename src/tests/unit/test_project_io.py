@@ -49,6 +49,33 @@ def _make_dataset(tmp_path):
     return state
 
 
+def _write_legacy_project(pio, ds, proj_dir):
+    """Write an old-style (v1.0) project: a separate annotations.coco.json,
+    referenced by "annotations_file", with no embedded "annotations" key.
+
+    Returns the path to the written .annoproj file.
+    """
+    proj_dir_path = Path(proj_dir)
+    proj_dir_path.mkdir(parents=True, exist_ok=True)
+    pio.export_coco(str(proj_dir_path / "annotations.coco.json"), ds)
+
+    annoproj_path = proj_dir_path / "legacy.annoproj"
+    legacy_data = {
+        "version": "1.0",
+        "project_name": "legacy",
+        "annotation_mode": ds.annotation_mode,
+        "dataset": {
+            "class_names": list(ds.class_names),
+            "class_colors": {k: list(v) for k, v in ds.class_colors.items()},
+        },
+        "annotations_file": "annotations.coco.json",
+        "per_image": {},
+        "inference": {"model_path": "", "score_maps_file": ""},
+    }
+    annoproj_path.write_text(json.dumps(legacy_data))
+    return str(annoproj_path)
+
+
 # ------------------------------------------------------------------ #
 # Polygon serialization helpers
 # ------------------------------------------------------------------ #
@@ -258,11 +285,11 @@ class TestCocoRoundTrip:
 
 class TestProjectRoundTrip:
     def test_save_creates_required_files(self, pio, tmp_path):
-        """Verify that save_project creates the .annoproj metadata file and the COCO annotations file.
+        """Verify that save_project creates only the .annoproj file, with annotations embedded.
 
-        Both the project manifest (.annoproj) and the COCO JSON file must exist on
-        disk after a successful save. Success means both files are present in the
-        project directory.
+        Annotations are now embedded directly in .annoproj instead of a separate
+        annotations.coco.json sidecar. Success means the manifest exists, contains
+        a top-level "annotations" section, and no COCO sidecar file is written.
         """
         ds = _make_dataset(tmp_path)
         inf = InferenceState()
@@ -271,7 +298,11 @@ class TestProjectRoundTrip:
         pio.save_project(proj_dir, "myproject", ds, inf)
 
         assert (tmp_path / "proj" / "myproject.annoproj").exists()
-        assert (tmp_path / "proj" / "annotations.coco.json").exists()
+        assert not (tmp_path / "proj" / "annotations.coco.json").exists()
+
+        raw = json.loads((tmp_path / "proj" / "myproject.annoproj").read_text())
+        assert "img001.jpg" in raw["annotations"]
+        assert raw["annotations"]["img001.jpg"][0]["category_name"] == "defect"
 
     def test_round_trip_restores_class_names(self, pio, tmp_path):
         """Verify that class names and colors survive a full project save/load round-trip.
@@ -312,6 +343,33 @@ class TestProjectRoundTrip:
 
         assert "img001.jpg" in ds2.annotations
         assert len(ds2.annotations["img001.jpg"]) == 1
+
+    def test_round_trip_preserves_thickness_and_visibility(self, pio, tmp_path):
+        """Verify per-annotation thickness and visibility survive a full round-trip.
+
+        Annotations used to be routed through COCO export/import on every save
+        and load, which only round-tripped category_name and polygon — thickness
+        and visible silently reset to defaults on every reload. Now that
+        annotations are embedded directly in .annoproj, both fields must survive
+        exactly. Success means the restored annotation's thickness and visible
+        match the customized values, not the defaults (2.0 / True).
+        """
+        ds = _make_dataset(tmp_path)
+        ds.update_annotation_thickness("img001.jpg", 0, 4.5)
+        ds.set_annotation_visible("img001.jpg", 0, False)
+
+        proj_dir = str(tmp_path / "proj")
+        path = pio.save_project(proj_dir, "myproject", ds, InferenceState())
+
+        data = pio.load_project(path)
+        ds2 = DatasetState()
+        ds2.image_dir = ds.image_dir
+        ds2.image_files = list(ds.image_files)
+        pio.apply_project_to_states(data, ds2, InferenceState())
+
+        restored = ds2.annotations["img001.jpg"][0]
+        assert restored["thickness"] == pytest.approx(4.5)
+        assert restored["visible"] is False
 
     def test_round_trip_restores_inspector_and_note(self, pio, tmp_path):
         """Verify that per-image inspector and note fields survive a full save/load round-trip.
@@ -472,22 +530,49 @@ class TestProjectRoundTrip:
 
         assert not (tmp_path / "proj" / "scoremaps.npz").exists()
 
-    def test_missing_coco_file_does_not_crash(self, pio, tmp_path):
-        """Verify that loading a project with a deleted COCO file does not raise an exception.
+    def test_legacy_format_loads_annotations_from_separate_coco_file(
+        self, pio, tmp_path
+    ):
+        """Verify that opening an old-style project still restores annotations.
 
-        Simulates a corrupted or moved project by deleting the COCO annotations file
-        after saving. apply_project_to_states should handle the missing file gracefully,
-        leaving annotations empty. Success means no exception is raised and annotations
+        Old .annoproj files have no top-level "annotations" key and instead
+        point at a sibling annotations.coco.json via "annotations_file". New
+        saves no longer produce this shape, but projects saved before this
+        change must keep loading correctly via the import_coco() fallback.
+        """
+        ds = _make_dataset(tmp_path)
+        proj_dir = str(tmp_path / "proj")
+        annoproj_path = _write_legacy_project(pio, ds, proj_dir)
+
+        data = pio.load_project(annoproj_path)
+        assert "annotations" not in data  # confirms this exercises the legacy branch
+
+        ds2 = DatasetState()
+        ds2.image_dir = ds.image_dir
+        ds2.image_files = list(ds.image_files)
+        pio.apply_project_to_states(data, ds2, InferenceState())
+
+        assert "img001.jpg" in ds2.annotations
+        assert ds2.annotations["img001.jpg"][0]["category_name"] == "defect"
+        assert len(ds2.annotations["img001.jpg"][0]["polygon"]) == 3
+
+    def test_missing_coco_file_does_not_crash(self, pio, tmp_path):
+        """Verify that loading a legacy project with a deleted COCO file does not raise.
+
+        Simulates a corrupted or moved legacy project by deleting the COCO
+        annotations file after writing it. apply_project_to_states should
+        handle the missing file gracefully, leaving annotations empty, instead
+        of raising. Success means no exception is raised and annotations
         equals {}.
         """
         ds = _make_dataset(tmp_path)
         proj_dir = str(tmp_path / "proj")
-        path = pio.save_project(proj_dir, "myproject", ds, InferenceState())
+        annoproj_path = _write_legacy_project(pio, ds, proj_dir)
 
-        # Remove the COCO file to simulate a corrupted/moved project
-        (tmp_path / "proj" / "annotations.coco.json").unlink()
+        # Remove the COCO file to simulate a corrupted/moved legacy project
+        (Path(proj_dir) / "annotations.coco.json").unlink()
 
-        data = pio.load_project(path)
+        data = pio.load_project(annoproj_path)
         ds2 = DatasetState()
         ds2.image_dir = ds.image_dir
         ds2.image_files = list(ds.image_files)

@@ -23,7 +23,7 @@ from core.utils.geometry import polygon_area, polygon_bbox
 
 logger = logging.getLogger("AnnoMate.ProjectIO")
 
-_SCHEMA_VERSION = "1.0"
+_SCHEMA_VERSION = "2.0"
 _COCO_FILENAME = "annotations.coco.json"
 _SCOREMAPS_FILENAME = "scoremaps.npz"
 
@@ -58,7 +58,7 @@ class ProjectIO:
         anomaly_constraint_state=None,
         session_seconds: float = 0.0,
     ) -> str:
-        """Write .annoproj + annotations.coco.json to project_dir.
+        """Write .annoproj to project_dir, with annotations embedded inline.
 
         Creates project_dir if it does not exist. Returns the absolute path
         to the written .annoproj file. Raises OSError if the directory cannot
@@ -83,11 +83,21 @@ class ProjectIO:
         if created_at is None:
             created_at = now
 
-        coco_path = os.path.join(project_dir, _COCO_FILENAME)
         _t1 = time.perf_counter()
-        self.export_coco(coco_path, dataset_state)
+        annotations_out = {
+            fname: [
+                {
+                    "category_name": rec["category_name"],
+                    "polygon": [[float(pt[0]), float(pt[1])] for pt in rec["polygon"]],
+                    "thickness": rec.get("thickness", 2.0),
+                    "visible": rec.get("visible", True),
+                }
+                for rec in records
+            ]
+            for fname, records in dataset_state.annotations.items()
+        }
         _t2 = time.perf_counter()
-        logger.info("save_project [export_coco]:      %.3fs", _t2 - _t1)
+        logger.info("save_project [build annotations]: %.3fs", _t2 - _t1)
 
         score_maps_file = ""
         if (
@@ -181,7 +191,7 @@ class ProjectIO:
                     name: list(rgb) for name, rgb in dataset_state.class_colors.items()
                 },
             },
-            "annotations_file": _COCO_FILENAME,
+            "annotations": annotations_out,
             "per_image": per_image,
             "inference": {
                 "model_path": self._as_relative_path(model_path, project_dir),
@@ -457,13 +467,27 @@ class ProjectIO:
         else:
             dataset_state.reset_classes()
 
-        # Annotations from COCO file
-        coco_path = project_data.get("resolved_coco_path", "")
-        if coco_path and os.path.exists(coco_path):
-            try:
-                self.import_coco(coco_path, dataset_state)
-            except Exception as exc:
-                logger.warning("Could not load COCO annotations: %s", exc)
+        # Annotations: embedded (v2.0+) or legacy separate COCO file (v1.0)
+        if "annotations" in project_data:
+            dataset_state.annotations = {
+                fname: [
+                    {
+                        "category_name": rec["category_name"],
+                        "polygon": [(pt[0], pt[1]) for pt in rec["polygon"]],
+                        "thickness": rec.get("thickness", 2.0),
+                        "visible": rec.get("visible", True),
+                    }
+                    for rec in records
+                ]
+                for fname, records in project_data["annotations"].items()
+            }
+        else:
+            coco_path = project_data.get("resolved_coco_path", "")
+            if coco_path and os.path.exists(coco_path):
+                try:
+                    self.import_coco(coco_path, dataset_state)
+                except Exception as exc:
+                    logger.warning("Could not load COCO annotations: %s", exc)
 
         image_dir = project_data.get("dataset", {}).get("image_dir", "")
 
