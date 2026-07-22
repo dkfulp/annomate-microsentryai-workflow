@@ -144,6 +144,7 @@ class AppWindow(QMainWindow):
         )
         add(data_menu, "Export Binary Masks…", "", self._export_binary_masks)
         add(data_menu, "Export CSV…", "", self._export_csv)
+        add(data_menu, "Export COCO JSON…", "", self._export_coco)
         add(
             data_menu,
             "Export Pixel-Level Train Structure…",
@@ -447,6 +448,21 @@ class AppWindow(QMainWindow):
         try:
             msg = self.io_controller.export_csv(out_path)
             QMessageBox.information(self, "Export", msg)
+        except Exception as exc:
+            QMessageBox.critical(self, "Export Error", str(exc))
+
+    def _export_coco(self) -> None:
+        out_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save COCO JSON",
+            os.path.join(self._export_start_dir(), "annotations.coco.json"),
+            "COCO JSON (*.json)",
+        )
+        if not out_path:
+            return
+        try:
+            self.project_controller.export_coco(out_path)
+            QMessageBox.information(self, "Export", f"Exported COCO annotations to:\n{out_path}")
         except Exception as exc:
             QMessageBox.critical(self, "Export Error", str(exc))
 
