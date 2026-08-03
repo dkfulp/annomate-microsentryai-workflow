@@ -79,6 +79,7 @@ class RightPanel(QWidget):
         splitter.setChildrenCollapsible(False)
 
         nav_sec = _CollapsibleSection("Dataset Navigator", expandable=True)
+        self._nav_collapsible = nav_sec
         self.navigator = DataNavigatorSection(dataset_model, inference_model)
         self.navigator.image_selected.connect(self.image_selected)
         self.navigator.prev_requested.connect(self.prev_requested)
@@ -109,6 +110,7 @@ class RightPanel(QWidget):
         cl.setSpacing(0)
 
         classes_sec = _CollapsibleSection("Annotation Classes")
+        self._classes_collapsible = classes_sec
         self.classes = ClassesSection(dataset_model)
         self.classes.class_selected.connect(self.class_selected)
         self.classes.annotation_mode_changed.connect(self.annotation_mode_changed)
@@ -123,6 +125,7 @@ class RightPanel(QWidget):
         cl.addWidget(self._annos_sec)
 
         meta_sec = _CollapsibleSection("Inspector/Notes")
+        self._meta_collapsible = meta_sec
         self.metadata = MetadataSection(dataset_model)
         meta_sec.body_layout().addWidget(self.metadata)
         cl.addWidget(meta_sec)
@@ -188,6 +191,25 @@ class RightPanel(QWidget):
 
     def get_microsentry_settings(self) -> dict:
         return self._ms_section.get_settings()
+
+    # ------------------------------------------------------------------ #
+    # Section header accessors (for tour/onboarding targeting)
+    # ------------------------------------------------------------------ #
+
+    def navigator_header(self) -> QWidget:
+        return self._nav_collapsible.header_widget()
+
+    def classes_header(self) -> QWidget:
+        return self._classes_collapsible.header_widget()
+
+    def annotations_header(self) -> QWidget:
+        return self._annos_sec.header_widget()
+
+    def metadata_header(self) -> QWidget:
+        return self._meta_collapsible.header_widget()
+
+    def microsentry_header(self) -> QWidget:
+        return self._ms_collapsible.header_widget()
 
     def navigator_set_inference(self, row: int, score: float, label: str) -> None:
         self.navigator.set_row_inference(row, score, label)

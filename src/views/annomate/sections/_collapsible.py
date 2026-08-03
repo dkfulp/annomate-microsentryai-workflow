@@ -67,6 +67,10 @@ class _CollapsibleSection(QWidget):
     def body_layout(self) -> QVBoxLayout:
         return self._body_layout
 
+    def header_widget(self) -> QWidget:
+        """Return the toggle-button header, which stays visible when collapsed."""
+        return self._toggle_btn
+
     def _on_toggle(self, checked: bool) -> None:
         self._expanded = checked
         self._body.setVisible(checked)
