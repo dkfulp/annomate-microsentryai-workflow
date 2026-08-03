@@ -1,4 +1,4 @@
-from pathlib import Path
+import os
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt
 from PySide6.QtGui import QColor, QBrush, QFont
@@ -340,7 +340,8 @@ class NavigatorTableModel(QAbstractTableModel):
         return None
 
     def _image_stem(self, row: int) -> str:
-        return Path(self._dataset_model.get_image_filename(row)).stem
+        name = self._dataset_model.get_image_filename(row)
+        return os.path.splitext(name)[0]
 
     def _image_path(self, row: int) -> str:
         return self._dataset_model.get_image_path(row)

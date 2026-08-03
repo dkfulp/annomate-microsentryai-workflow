@@ -51,6 +51,27 @@ class TestNavigatorTableModel:
         assert model.data(model.index(1, NavigatorColumns.IMG_ID)) == "a"
         assert model.data(model.index(1, NavigatorColumns.IMG_ID), SOURCE_ROW_ROLE) == 1
 
+    def test_img_id_keeps_folder_prefix_but_strips_extension_when_nested(
+        self, inference_model, tmp_path
+    ):
+        """Nested images show their folder path but not their extension in Img ID.
+
+        Two images sharing a basename in different subfolders ("nest1/dup.jpg",
+        "nest3/dup.jpg") must show distinct Img IDs ("nest1/dup", "nest3/dup"),
+        while a flat image keeps today's plain-stem look.
+        """
+        model = DatasetTableModel(DatasetState())
+        model.load_folder(
+            str(tmp_path), ["root.jpg", "nest1/dup.jpg", "nest3/dup.jpg"]
+        )
+        nav = NavigatorTableModel(model, inference_model)
+
+        ids = {
+            nav.data(nav.index(row, NavigatorColumns.IMG_ID))
+            for row in range(nav.rowCount())
+        }
+        assert ids == {"root", "nest1/dup", "nest3/dup"}
+
     def test_annotation_and_decision_values(self, dataset_model, inference_model):
         """Verify that annotation count, review status, and review decision columns display correctly.
 

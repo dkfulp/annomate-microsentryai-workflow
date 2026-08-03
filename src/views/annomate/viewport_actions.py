@@ -477,6 +477,7 @@ class ViewportActionsBar(QFrame):
         self._btn_export_ratio.setToolTip(
             "Save the current ratio to a plain-text .txt file"
         )
+        self._btn_export_ratio.setEnabled(False)  # enabled once a calibration is set
         self._btn_export_ratio.clicked.connect(self._on_export_ratio_clicked)
         ratio_file_row.addWidget(self._btn_export_ratio)
         layout.addLayout(ratio_file_row)
@@ -730,7 +731,9 @@ class ViewportActionsBar(QFrame):
         self._btn_import_template.clicked.connect(self._on_import_template_clicked)
         import_clear_row.addWidget(self._btn_import_template)
         self._btn_clear_template = QPushButton("Clear")
-        self._btn_clear_template.setToolTip("Clear saved center template")
+        self._btn_clear_template.setToolTip(
+            "Clear the saved center template, or cancel an in-progress calibration"
+        )
         self._btn_clear_template.clicked.connect(self._on_clear_template_clicked)
         import_clear_row.addWidget(self._btn_clear_template)
         panel_layout.addLayout(import_clear_row)
@@ -870,8 +873,7 @@ class ViewportActionsBar(QFrame):
 
     def _on_export_ratio_clicked(self) -> None:
         if self._model is None or not self._model.has_scale():
-            QMessageBox.warning(self, "Export Calibration Ratio", "No calibration set.")
-            return
+            return  # button is disabled in this state; guard kept as a safety net
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Export Calibration Ratio",
@@ -1099,7 +1101,9 @@ class ViewportActionsBar(QFrame):
         self._refresh_action_availability()
 
     def _refresh_calib_status(self) -> None:
-        if self._model is None or not self._model.has_scale():
+        has_scale = self._model is not None and self._model.has_scale()
+        self._btn_export_ratio.setEnabled(has_scale)
+        if not has_scale:
             self._calib_status_lbl.setText("Current Calibration: None")
             return
         from core.persistence.calibration_io import format_ratio_string
@@ -1257,9 +1261,14 @@ class ViewportActionsBar(QFrame):
         self._btn_calibrate_center.setEnabled(self._has_image)
         self._btn_accept_center.setEnabled(self._has_image and self._center_calibrating)
         self._btn_import_template.setEnabled(self._has_image)
+        # Also enabled mid-calibration so an unwanted calibrate can be
+        # cancelled — clearing exits calibration and hides the crop overlay.
         self._btn_clear_template.setEnabled(
-            self._center_template_model is not None
-            and self._center_template_model.has_template()
+            self._center_calibrating
+            or (
+                self._center_template_model is not None
+                and self._center_template_model.has_template()
+            )
         )
         self._btn_measure.setEnabled(scale_available and self._has_image)
         self._grid_chk.setEnabled(scale_available)
