@@ -6,6 +6,7 @@ from PySide6.QtGui import QColor, QBrush
 
 from core.states.dataset_state import DatasetState
 from core.utils.geometry import polygon_area
+from core.utils.image_scan import to_native_path
 
 logger = logging.getLogger("AnnoMate.DatasetModel")
 
@@ -390,7 +391,7 @@ class DatasetTableModel(QAbstractTableModel):
             str: Absolute path constructed from the image directory and the
                 filename at *row*.
         """
-        return os.path.join(self.state.image_dir, self.state.image_files[row])
+        return to_native_path(self.state.image_dir, self.state.image_files[row])
 
     def get_annotations(self, row: int) -> list:
         """Return the annotation list for the image at *row*.

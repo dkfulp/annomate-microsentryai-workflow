@@ -20,6 +20,7 @@ from PIL import Image
 
 from core.utils.constants import DEFAULT_CLASS_COLORS
 from core.utils.geometry import polygon_area, polygon_bbox
+from core.utils.image_scan import to_native_path
 
 logger = logging.getLogger("AnnoMate.ProjectIO")
 
@@ -493,7 +494,7 @@ class ProjectIO:
 
         if "per_image" in project_data:
             for fname, info in project_data["per_image"].items():
-                abs_path = os.path.join(image_dir, fname) if image_dir else fname
+                abs_path = to_native_path(image_dir, fname) if image_dir else fname
                 score = info.get("score")
                 label = info.get("label")
                 if score is not None:
@@ -528,10 +529,10 @@ class ProjectIO:
                 dataset_state.review_decisions[fname] = decision
             inf_data = project_data.get("inference", {})
             for k, v in inf_data.get("score_cache", {}).items():
-                abs_k = k if os.path.isabs(k) else os.path.join(image_dir, k)
+                abs_k = k if os.path.isabs(k) else to_native_path(image_dir, k)
                 inference_state.scores[abs_k] = v
             for k, v in inf_data.get("label_cache", {}).items():
-                abs_k = k if os.path.isabs(k) else os.path.join(image_dir, k)
+                abs_k = k if os.path.isabs(k) else to_native_path(image_dir, k)
                 inference_state.labels[abs_k] = v
 
         inference_state.inference_cache = dict(inference_state.scores)
@@ -678,7 +679,7 @@ class ProjectIO:
                 w, h = dataset_state.image_sizes[fname]
             else:
                 img_path = (
-                    os.path.join(dataset_state.image_dir, fname)
+                    to_native_path(dataset_state.image_dir, fname)
                     if dataset_state.image_dir
                     else fname
                 )

@@ -30,3 +30,23 @@ def scan_images(directory: str) -> list:
                 rel = Path(dirpath, fname).relative_to(root).as_posix()
                 results.append(rel)
     return sorted(results)
+
+
+def to_native_path(directory: str, rel_path: str) -> str:
+    """Join *directory* with a POSIX-style relative path from ``scan_images``.
+
+    ``os.path.join`` does not convert the forward slashes embedded inside
+    *rel_path* on Windows, leaving a mixed-separator string (e.g.
+    ``"C:\\images\\nest1/dup.jpg"``) that silently fails to string-match an
+    equivalent path built through ``pathlib`` — breaking any dict keyed by
+    these absolute paths (inference scores/labels/score maps) for nested
+    images. ``normpath`` is a no-op on POSIX, where ``/`` is already native.
+
+    Args:
+        directory (str): Absolute path to the dataset root.
+        rel_path (str): POSIX-style path relative to *directory*.
+
+    Returns:
+        str: Absolute path using the current OS's native separator.
+    """
+    return os.path.normpath(os.path.join(directory, rel_path))
