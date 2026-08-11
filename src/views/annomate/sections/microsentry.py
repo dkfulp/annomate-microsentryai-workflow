@@ -4,10 +4,12 @@ MicrosentrySection — unified Microsentry controls panel for the AnnoMate right
 Layout (when model loaded):
   Load Model button
   Model name label
-  [Heatmap] toggle  +  Transparency slider
-  [Segmentation] toggle  +  Threshold slider
+  [Enable Heatmap] toggle
+      Transparency slider (+ nudge buttons)
+  [Enable Segmentation] toggle
+      Threshold slider (+ nudge buttons)
   [Accept AI Polygons] button
-  ▸ Advanced Settings (collapsible)
+  chevron_right  Advanced Settings (collapsible)
       Simplify Tolerance slider
       Heatmap Minimum slider
 """
@@ -25,8 +27,17 @@ from PySide6.QtWidgets import (
     QToolButton,
 )
 
+from views.icons import material_icon
 
-def _slider_row(label_text: str, value_label: QLabel, slider: QSlider) -> QWidget:
+from ._shared import _toggle_button
+
+_ICON_ADVANCED_EXPANDED = "expand_more"
+_ICON_ADVANCED_COLLAPSED = "chevron_right"
+
+
+def _slider_row(
+    label_text: str, value_label: QLabel, slider: QSlider, trailing=None
+) -> QWidget:
     w = QWidget()
     v = QVBoxLayout(w)
     v.setContentsMargins(0, 0, 0, 0)
@@ -39,7 +50,13 @@ def _slider_row(label_text: str, value_label: QLabel, slider: QSlider) -> QWidge
     top.addStretch()
     top.addWidget(value_label)
     v.addLayout(top)
-    v.addWidget(slider)
+    bottom = QHBoxLayout()
+    bottom.setContentsMargins(0, 0, 0, 0)
+    bottom.setSpacing(4)
+    bottom.addWidget(slider, stretch=1)
+    for widget in trailing or []:
+        bottom.addWidget(widget)
+    v.addLayout(bottom)
     return w
 
 
@@ -74,11 +91,11 @@ class MicrosentrySection(QWidget):
         btn_row = QHBoxLayout()
         btn_row.setContentsMargins(0, 0, 0, 0)
         btn_row.setSpacing(4)
-        self._btn_load_prev = QPushButton("Load Previous")
+        self._btn_load_prev = QPushButton(material_icon("folder_open"), "Load Previous")
         self._btn_load_prev.setToolTip("Reload the model saved with this project")
         self._btn_load_prev.setEnabled(False)
         self._btn_load_prev.clicked.connect(self.load_previous_model_requested)
-        self._btn_load_new = QPushButton("Load New")
+        self._btn_load_new = QPushButton(material_icon("folder_open"), "Load New")
         self._btn_load_new.setToolTip("Browse for a new .pt model file")
         self._btn_load_new.setEnabled(False)
         self._btn_load_new.clicked.connect(self.load_model_requested)
@@ -120,12 +137,12 @@ class MicrosentrySection(QWidget):
 
         lw.addSpacing(4)
 
-        # Heatmap toggle + transparency slider inline
-        self._btn_heatmap = QToolButton()
-        self._btn_heatmap.setText("Heatmap")
-        self._btn_heatmap.setCheckable(True)
+        # Heatmap toggle, transparency slider underneath
+        self._btn_heatmap = _toggle_button("Enable Heatmap")
         self._btn_heatmap.setToolTip("Overlay anomaly heatmap on the canvas image")
         self._btn_heatmap.toggled.connect(self._debounce.start)
+        lw.addWidget(self._btn_heatmap)
+
         self._alpha_val = QLabel("45%")
         self._alpha_val.setStyleSheet("font-size: 11px;")
         self._alpha_val.setFixedWidth(30)
@@ -135,20 +152,31 @@ class MicrosentrySection(QWidget):
         self._alpha.valueChanged.connect(
             lambda v: (self._alpha_val.setText(f"{v}%"), self._debounce.start())
         )
-        heatmap_row = QHBoxLayout()
-        heatmap_row.setContentsMargins(0, 0, 0, 0)
-        heatmap_row.setSpacing(4)
-        heatmap_row.addWidget(self._btn_heatmap)
-        heatmap_row.addWidget(self._alpha, stretch=1)
-        heatmap_row.addWidget(self._alpha_val)
-        lw.addLayout(heatmap_row)
+        self._alpha_dec = QPushButton(material_icon("chevron_left", size=12), "")
+        self._alpha_dec.setFixedWidth(20)
+        self._alpha_dec.clicked.connect(
+            lambda: self._alpha.setValue(self._alpha.value() - 1)
+        )
+        self._alpha_inc = QPushButton(material_icon("chevron_right", size=12), "")
+        self._alpha_inc.setFixedWidth(20)
+        self._alpha_inc.clicked.connect(
+            lambda: self._alpha.setValue(self._alpha.value() + 1)
+        )
+        lw.addWidget(
+            _slider_row(
+                "Transparency",
+                self._alpha_val,
+                self._alpha,
+                [self._alpha_dec, self._alpha_inc],
+            )
+        )
 
-        # Segmentation toggle + threshold slider inline
-        self._btn_seg = QToolButton()
-        self._btn_seg.setText("Segmentation")
-        self._btn_seg.setCheckable(True)
+        # Segmentation toggle, threshold slider underneath
+        self._btn_seg = _toggle_button("Enable Segmentation")
         self._btn_seg.setToolTip("Show AI segmentation polygons on the canvas")
         self._btn_seg.toggled.connect(self._on_seg_toggled)
+        lw.addWidget(self._btn_seg)
+
         self._thresh_val = QLabel("95.0")
         self._thresh_val.setStyleSheet("font-size: 11px;")
         self._thresh_val.setFixedWidth(40)
@@ -161,28 +189,27 @@ class MicrosentrySection(QWidget):
                 self._debounce.start(),
             )
         )
-        self._thresh_dec = QPushButton("<")
+        self._thresh_dec = QPushButton(material_icon("chevron_left", size=12), "")
         self._thresh_dec.setFixedWidth(20)
         self._thresh_dec.clicked.connect(
             lambda: self._thresh.setValue(self._thresh.value() - 1)
         )
-        self._thresh_inc = QPushButton(">")
+        self._thresh_inc = QPushButton(material_icon("chevron_right", size=12), "")
         self._thresh_inc.setFixedWidth(20)
         self._thresh_inc.clicked.connect(
             lambda: self._thresh.setValue(self._thresh.value() + 1)
         )
-        seg_row = QHBoxLayout()
-        seg_row.setContentsMargins(0, 0, 0, 0)
-        seg_row.setSpacing(4)
-        seg_row.addWidget(self._btn_seg)
-        seg_row.addWidget(self._thresh, stretch=1)
-        seg_row.addWidget(self._thresh_dec)
-        seg_row.addWidget(self._thresh_inc)
-        seg_row.addWidget(self._thresh_val)
-        lw.addLayout(seg_row)
+        lw.addWidget(
+            _slider_row(
+                "Threshold",
+                self._thresh_val,
+                self._thresh,
+                [self._thresh_dec, self._thresh_inc],
+            )
+        )
 
         # Accept AI Polygons button
-        self._btn_accept = QPushButton("Accept AI Polygons")
+        self._btn_accept = QPushButton(material_icon("check"), "Accept AI Polygons")
         self._btn_accept.setToolTip(
             "Add AI segmentation polygons as annotations on the active class"
         )
@@ -192,13 +219,14 @@ class MicrosentrySection(QWidget):
 
         # ── Advanced Settings (inline collapsible) ──────────────────────── #
         self._btn_advanced = QToolButton()
-        self._btn_advanced.setText("▸  Advanced Settings")
+        self._btn_advanced.setIcon(material_icon(_ICON_ADVANCED_COLLAPSED, size=14))
+        self._btn_advanced.setText("  Advanced Settings")
         self._btn_advanced.setCheckable(True)
         self._btn_advanced.setChecked(False)
         self._btn_advanced.setStyleSheet(
             "text-align: left; font-size: 11px; border: none;"
         )
-        self._btn_advanced.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self._btn_advanced.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self._btn_advanced.setSizePolicy(
             self._btn_advanced.sizePolicy().horizontalPolicy(),
             self._btn_advanced.sizePolicy().verticalPolicy(),
@@ -251,7 +279,12 @@ class MicrosentrySection(QWidget):
 
     def _on_advanced_toggled(self, checked: bool) -> None:
         self._advanced_widget.setVisible(checked)
-        self._btn_advanced.setText(f"{'▾' if checked else '▸'}  Advanced Settings")
+        self._btn_advanced.setIcon(
+            material_icon(
+                _ICON_ADVANCED_EXPANDED if checked else _ICON_ADVANCED_COLLAPSED,
+                size=14,
+            )
+        )
 
     # ------------------------------------------------------------------ #
     # Public API
