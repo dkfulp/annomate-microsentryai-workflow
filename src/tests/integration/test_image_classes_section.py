@@ -112,3 +112,17 @@ def test_rebuild_reflects_decision_change_on_current_row(qtbot, dataset_model):
     dataset_model.set_review_decision(0, "reject")
 
     assert sorted(row_names(section)) == ["inclusion", "scratch"]
+
+
+def test_new_class_appears_without_switching_images(qtbot, dataset_model):
+    """Regression: adding a class must refresh the picker on the current image,
+    not just on the next set_current_row() (i.e. navigating away and back)."""
+    dataset_model.set_review_decision(0, "reject")
+    section = ImageClassesSection(dataset_model)
+    qtbot.addWidget(section)
+    section.set_current_row(0)
+    assert sorted(row_names(section)) == ["inclusion", "scratch"]
+
+    dataset_model.add_class("void", (70, 80, 90))
+
+    assert sorted(row_names(section)) == ["inclusion", "scratch", "void"]
