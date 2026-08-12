@@ -38,6 +38,9 @@ from ._shared import (
 )
 
 _CHIP_ACTIVE_STYLE = f"background-color: {_COLOR_SELECTED_BG}; border-radius: 4px;"
+# Numeric fields read better highest-first the moment you pick them; text
+# fields (Filename) read better alphabetically ascending.
+_SORT_DEFAULT_DESCENDING = {NavigatorColumns.ANNOTS, NavigatorColumns.SCORE}
 _HEADER_BUTTON_STYLE = (
     "QToolButton { color: black; } "
     f"QToolButton:hover {{ background-color: {_COLOR_SELECTED_BG}; }}"
@@ -288,7 +291,11 @@ class DataNavigatorSection(QWidget):
             )
         else:
             self._sort_column = column
-            self._sort_order = Qt.AscendingOrder
+            self._sort_order = (
+                Qt.DescendingOrder
+                if column in _SORT_DEFAULT_DESCENDING
+                else Qt.AscendingOrder
+            )
         self._proxy.sort(self._sort_column, self._sort_order)
         self._filter_panel.set_sort_state(self._sort_column, self._sort_order)
 

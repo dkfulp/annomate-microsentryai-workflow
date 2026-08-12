@@ -448,13 +448,12 @@ def test_filter_panel_class_options_update_as_annotations_are_added(navigator, q
     assert widget._filter_panel._class_checks["crack"].text() == "crack (1)"
 
 
-def test_sort_menu_same_field_reverses_different_field_resets_ascending(navigator):
-    """Verify choosing the same sort field twice reverses order, a new field resets to ascending.
+def test_sort_menu_same_field_reverses(navigator):
+    """Verify choosing the already-active sort field twice reverses order, then back.
 
     The widget defaults to sorting by IMG_ID ascending, so picking IMG_ID
     from the sort menu once reverses it to descending; picking it again
-    reverses back to ascending. Picking a different field resets to
-    ascending on that field.
+    reverses back to ascending.
     """
     widget, _dataset_model, _inference_model, _tmp_path = navigator
     assert widget._sort_column == NavigatorColumns.IMG_ID
@@ -472,10 +471,31 @@ def test_sort_menu_same_field_reverses_different_field_resets_ascending(navigato
     assert "↑" in widget._filter_panel._sort_radios[NavigatorColumns.IMG_ID].text()
     assert source_rows(widget) == ascending
 
+
+def test_sort_menu_new_field_default_direction_depends_on_field(navigator):
+    """Verify a newly-picked sort field's default direction fits its data type.
+
+    Filename (text) defaults ascending (A-Z); Annotations and Score
+    (numeric, "more/higher is more interesting") default descending.
+    """
+    widget, _dataset_model, _inference_model, _tmp_path = navigator
+    assert widget._sort_column == NavigatorColumns.IMG_ID
+    assert widget._sort_order == Qt.AscendingOrder
+
     widget._on_sort_field_chosen(NavigatorColumns.ANNOTS)
     assert widget._sort_column == NavigatorColumns.ANNOTS
+    assert widget._sort_order == Qt.DescendingOrder
+    assert "↓" in widget._filter_panel._sort_radios[NavigatorColumns.ANNOTS].text()
+
+    widget._on_sort_field_chosen(NavigatorColumns.SCORE)
+    assert widget._sort_column == NavigatorColumns.SCORE
+    assert widget._sort_order == Qt.DescendingOrder
+    assert "↓" in widget._filter_panel._sort_radios[NavigatorColumns.SCORE].text()
+
+    widget._on_sort_field_chosen(NavigatorColumns.IMG_ID)
+    assert widget._sort_column == NavigatorColumns.IMG_ID
     assert widget._sort_order == Qt.AscendingOrder
-    assert "↑" in widget._filter_panel._sort_radios[NavigatorColumns.ANNOTS].text()
+    assert "↑" in widget._filter_panel._sort_radios[NavigatorColumns.IMG_ID].text()
 
 
 def test_selecting_a_second_row_collapses_the_first_accordion_style(navigator, qtbot):

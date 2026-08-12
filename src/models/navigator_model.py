@@ -55,7 +55,6 @@ _TOOLTIPS = {
     NavigatorColumns.SCORE: "MicroSentry anomaly score",
 }
 _DECISION_LABELS = {"accept": "Accept", "reject": "Reject"}
-_DECISION_SORT = {None: 0, "": 0, "accept": 1, "reject": 2}
 
 
 class NavigatorTableModel(QAbstractTableModel):
@@ -143,8 +142,6 @@ class NavigatorTableModel(QAbstractTableModel):
             return self._image_stem(row).casefold()
         if col == NavigatorColumns.ANNOTS:
             return self._work_count(row)
-        if col == NavigatorColumns.DECISION:
-            return _DECISION_SORT.get(self._dataset_model.get_review_decision(row), 0)
         if col == NavigatorColumns.SCORE:
             score = self._score(row)
             return None if score is None else float(score)

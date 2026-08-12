@@ -19,7 +19,6 @@ from models.navigator_model import (
 _SORT_FIELDS = (
     (NavigatorColumns.IMG_ID, "Filename"),
     (NavigatorColumns.ANNOTS, "Annotations"),
-    (NavigatorColumns.DECISION, "Decision"),
     (NavigatorColumns.SCORE, "Score"),
 )
 
