@@ -928,18 +928,6 @@ class ImageLabel(QLabel):
                 return
         super().keyPressEvent(event)
 
-    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
-        """Finish the current polygon on double-click while drawing.
-
-        Args:
-            event (QMouseEvent): The mouse double-click event.
-        """
-        if self.current_tool == POLYGON and self.current_polygon_points:
-            self.finish_current_polygon()
-            return
-
-        super().mouseDoubleClickEvent(event)
-
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """Handle left-click (add vertex / select / drag) and right-click (pan).
 

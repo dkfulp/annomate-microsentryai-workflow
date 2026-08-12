@@ -75,8 +75,10 @@ class ImageClassesSection(QWidget):
     class is listed as a row while the image is rejected -- clicking a row
     tags/untags it, mirroring the same "reject to unlock tagging" rule the
     Annotation Classes panel enforces, so both surfaces agree on when
-    tagging is allowed. Outside of a reject decision, only the tags already
-    assigned are shown, read-only.
+    *new* tagging is allowed. Outside of a reject decision, only the tags
+    already assigned are shown -- but those existing tags stay clickable so
+    a tag applied while rejected can still be removed after the decision is
+    changed back (e.g. to undecided), without having to re-reject first.
     """
 
     def __init__(self, dataset_model, parent: QWidget = None) -> None:
@@ -129,31 +131,41 @@ class ImageClassesSection(QWidget):
                 widget.deleteLater()
         self._rows.clear()
 
-        interactive = self._is_interactive()
+        reject_unlocked = self._is_interactive()
         tagged = (
             set(self.dataset_model.get_image_classes(self._current_row))
             if self._current_row >= 0
             else set()
         )
         visible_names = (
-            self.dataset_model.get_class_names() if interactive else sorted(tagged)
+            self.dataset_model.get_class_names() if reject_unlocked else sorted(tagged)
         )
 
         for name in visible_names:
             rgb = self.dataset_model.get_class_color(name)
-            row = _ImageClassRow(name, rgb, name in tagged, interactive)
+            is_tagged = name in tagged
+            # Adding a new tag still requires the reject unlock; removing an
+            # already-tagged class never needs it, so a tag applied while
+            # rejected stays removable after the decision changes.
+            row_interactive = reject_unlocked or is_tagged
+            row = _ImageClassRow(name, rgb, is_tagged, row_interactive)
             row.toggled.connect(self._on_row_toggled)
             self._rows_layout.addWidget(row)
             self._rows[name] = row
 
         has_rows = bool(visible_names)
         self._rows_container.setVisible(has_rows)
-        self._hint_lbl.setVisible(interactive)
+        self._hint_lbl.setVisible(reject_unlocked or bool(tagged))
+        self._hint_lbl.setText(
+            "Click a class to tag or untag this image."
+            if reject_unlocked
+            else "Click a tag to remove it."
+        )
         self._empty_lbl.setVisible(not has_rows)
         if not has_rows:
             self._empty_lbl.setText(
                 "No classes defined yet. Add one in the Annotation Classes panel."
-                if interactive
+                if reject_unlocked
                 else "No class tags. Reject this image to assign class tags."
             )
 
