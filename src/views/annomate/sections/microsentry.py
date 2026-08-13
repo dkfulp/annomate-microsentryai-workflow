@@ -98,6 +98,7 @@ class MicrosentrySection(QWidget):
         self._btn_load_new = QPushButton(material_icon("folder_open"), "Load New")
         self._btn_load_new.setToolTip("Browse for a new .pt model file")
         self._btn_load_new.setEnabled(False)
+        self._btn_load_new.setObjectName("microsentryLoadNewButton")
         self._btn_load_new.clicked.connect(self.load_model_requested)
         btn_row.addWidget(self._btn_load_prev)
         btn_row.addWidget(self._btn_load_new)
@@ -139,6 +140,7 @@ class MicrosentrySection(QWidget):
 
         # Heatmap toggle, transparency slider underneath
         self._btn_heatmap = _toggle_button("Enable Heatmap")
+        self._btn_heatmap.setObjectName("microsentryHeatmapButton")
         self._btn_heatmap.setToolTip("Overlay anomaly heatmap on the canvas image")
         self._btn_heatmap.toggled.connect(self._debounce.start)
         lw.addWidget(self._btn_heatmap)
@@ -210,6 +212,7 @@ class MicrosentrySection(QWidget):
 
         # Accept AI Polygons button
         self._btn_accept = QPushButton(material_icon("check"), "Accept AI Polygons")
+        self._btn_accept.setObjectName("microsentryAcceptButton")
         self._btn_accept.setToolTip(
             "Add AI segmentation polygons as annotations on the active class"
         )

@@ -181,6 +181,7 @@ class LeftPanel(QWidget):
         self.navigator = DataNavigatorSection(
             dataset_model, inference_model, calibration_model
         )
+        self.navigator.setObjectName("leftPanelNavigator")
         self.navigator.image_selected.connect(self.image_selected)
         self.navigator.prev_requested.connect(self.prev_requested)
         self.navigator.next_requested.connect(self.next_requested)

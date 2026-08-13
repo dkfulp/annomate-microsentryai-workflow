@@ -161,6 +161,7 @@ class _ReviewBar(QFrame):
         layout.addWidget(self._drag_handle)
 
         self._btn_accept = QToolButton()
+        self._btn_accept.setObjectName("reviewAcceptButton")
         self._btn_accept.setIcon(material_icon("check", size=16, color="black"))
         self._btn_accept.setText("Accept")
         self._btn_accept.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)

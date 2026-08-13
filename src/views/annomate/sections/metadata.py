@@ -157,6 +157,7 @@ class MetadataSection(QWidget):
         inspector_row.addWidget(self._set_inspector_btn)
 
         self._set_all_btn = QPushButton(material_icon("groups", color="black"), "Set All")
+        self._set_all_btn.setObjectName("metadataSetAllButton")
         self._set_all_btn.setFixedWidth(78)
         self._set_all_btn.setToolTip(
             "Bulk-assign an inspector name to a filtered set of images"
