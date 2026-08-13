@@ -949,9 +949,8 @@ class ImageLabel(QLabel):
 
         if event.button() == Qt.LeftButton:
             if self._pending_polygon is not None:
-                self._pending_polygon = None
-                self.update()
-                self.polygonDiscarded.emit()
+                # Awaiting classification via the popup — only its X button
+                # or Escape may drop it; a stray canvas click must not.
                 return
 
             if self.current_tool in (SAM_BBOX, POLYGON):
