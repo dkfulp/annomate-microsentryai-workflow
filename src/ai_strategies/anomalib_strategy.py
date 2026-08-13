@@ -426,6 +426,15 @@ class AnomalibStrategy:
                             time.perf_counter() - t_inferencer,
                         )
 
+                    # export_transform (antialias=False) exists only so ONNX/OpenVINO
+                    # graphs stay traceable; TorchInferencer's legacy forward() applies
+                    # it unconditionally, but the model's threshold was calibrated with
+                    # the antialiased `transform` (Lightning test/predict steps bypass
+                    # export_transform). Alias it so eager inference matches calibration.
+                    pre_processor = getattr(self.torch_inferencer.model, "pre_processor", None)
+                    if pre_processor is not None and getattr(pre_processor, "transform", None) is not None:
+                        pre_processor.export_transform = pre_processor.transform
+
                     self.model_name = f"Anomalib (Torch) [{final_device}]"
                     logger.info("Loaded %s via TorchInferencer", self.model_name)
 
@@ -610,8 +619,18 @@ class AnomalibStrategy:
                 )
                 tensor = tensor.to(device_obj)
 
-            with torch.no_grad():
-                output = self.raw_model(tensor)
+            # pre.transform() above already resized/normalised the tensor; raw_model's
+            # forward() would otherwise run its pre_processor a second time and
+            # double-apply Normalize. Suppress it for this call only.
+            saved_export_transform = getattr(pre, "export_transform", None) if pre is not None else None
+            if pre is not None:
+                pre.export_transform = None
+            try:
+                with torch.no_grad():
+                    output = self.raw_model(tensor)
+            finally:
+                if pre is not None:
+                    pre.export_transform = saved_export_transform
 
             score = 0.0
             heatmap = np.zeros((256, 256), dtype=np.float32)

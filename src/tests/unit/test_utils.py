@@ -1,5 +1,6 @@
 import pytest
 from core.utils.geometry import polygon_area, polygon_bbox
+from core.utils.image_scan import scan_images
 
 
 class TestPolygonArea:
@@ -71,3 +72,48 @@ class TestPolygonBbox:
         pts = [(2, 3), (5, 3), (5, 7), (2, 7)]
         result = polygon_bbox(pts)
         assert result == pytest.approx([2.0, 3.0, 3.0, 4.0])
+
+
+class TestScanImages:
+    def test_finds_nested_images_as_relative_posix_paths(self, tmp_path):
+        """Recursively finds images at any depth, keyed by path relative to root.
+
+        Builds root.png, nest1/nest1.png, nest1/nest2/nest2.png and confirms all
+        three come back as POSIX-separated paths relative to tmp_path.
+        """
+        (tmp_path / "root.png").touch()
+        (tmp_path / "nest1").mkdir()
+        (tmp_path / "nest1" / "nest1.png").touch()
+        (tmp_path / "nest1" / "nest2").mkdir()
+        (tmp_path / "nest1" / "nest2" / "nest2.png").touch()
+
+        result = scan_images(str(tmp_path))
+
+        assert result == ["nest1/nest1.png", "nest1/nest2/nest2.png", "root.png"]
+
+    def test_same_basename_in_different_folders_are_distinct(self, tmp_path):
+        """Two images sharing a basename in different subfolders resolve distinctly."""
+        (tmp_path / "nest1").mkdir()
+        (tmp_path / "nest1" / "dup.png").touch()
+        (tmp_path / "nest3").mkdir()
+        (tmp_path / "nest3" / "dup.png").touch()
+
+        result = scan_images(str(tmp_path))
+
+        assert result == ["nest1/dup.png", "nest3/dup.png"]
+
+    def test_ignores_non_image_files(self, tmp_path):
+        (tmp_path / "report.txt").touch()
+        (tmp_path / "photo.jpg").touch()
+
+        assert scan_images(str(tmp_path)) == ["photo.jpg"]
+
+    def test_skips_hidden_directories(self, tmp_path):
+        (tmp_path / ".git").mkdir()
+        (tmp_path / ".git" / "img.png").touch()
+        (tmp_path / "visible.png").touch()
+
+        assert scan_images(str(tmp_path)) == ["visible.png"]
+
+    def test_empty_folder_returns_empty_list(self, tmp_path):
+        assert scan_images(str(tmp_path)) == []
